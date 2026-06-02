@@ -17,7 +17,7 @@ from LightAgent import LightAgent, LightFlow
 
 API_KEY = os.getenv("LIGHTAGENT_API_KEY") or os.getenv("OPENAI_API_KEY")
 BASE_URL = os.getenv("LIGHTAGENT_BASE_URL", "http://newapi.wanxingai.cn/v1/")
-MODEL = os.getenv("LIGHTAGENT_MODEL", "deepseek-v3.2")
+MODEL = os.getenv("LIGHTAGENT_MODEL", "deepseek-v4-flash")
 
 
 def build_agent(name: str, role: str) -> LightAgent:
