@@ -262,6 +262,7 @@ class LightAgent:
 
         # 初始化客户端
         self._initialize_clients(tracetools, tot_api_key, tot_base_url, tot_model)
+        self.tracetools = tracetools
         self.chat_params = {}  # history 存储器
         self._trace_recorder = TraceRecorder(enabled=False)
 
