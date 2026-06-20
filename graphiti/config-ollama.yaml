@@ -4,15 +4,21 @@ server:
 llm:
   provider: "openai"
   model: "qwen2.5:7b"
-  api_base: "http://localhost:11434/v1"
-  api_key: "ollama"
+  providers:
+    openai:
+      api_key: "ollama"
+      api_url: "http://localhost:11434/v1"
 
 embedder:
-  provider: "sentence_transformers"
-  model: "all-MiniLM-L6-v2"
+  provider: "openai"
+  model: "nomic-embed-text"
+  providers:
+    openai:
+      api_key: "ollama"
+      api_url: "http://localhost:11434/v1"
 
 database:
   provider: "falkordb"
   providers:
     falkordb:
-      uri: "redis://localhost:6379"
+      uri: "redis://localhost:6380"

@@ -10,9 +10,10 @@
     },
     "memory": {
       "command": "uv",
-      "args": ["run", "--directory", "${GRAPHITI_MCP_DIR}", "graphiti_mcp"],
+      "args": ["run", "--directory", "${GRAPHITI_MCP_DIR}", "python", "main.py", "--config", "${GRAPHITI_CONFIG}", "--transport", "stdio"],
       "env": {
-        "GRAPHITI_CONFIG_PATH": "${GRAPHITI_CONFIG}"
+        "OPENAI_API_KEY": "ollama",
+        "OPENAI_BASE_URL": "http://localhost:11434/v1"
       },
       "disabled": false
     }
