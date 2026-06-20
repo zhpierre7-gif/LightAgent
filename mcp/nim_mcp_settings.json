@@ -10,7 +10,7 @@
     },
     "memory": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "args": ["-y", "knowledgegraph-mcp"],
       "disabled": false
     }
   }
