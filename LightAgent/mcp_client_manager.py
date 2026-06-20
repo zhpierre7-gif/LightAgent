@@ -134,7 +134,6 @@ class MCPClientManager:
         )
 
     async def call_tool(self, tool_name: str, arguments: dict, target_server: str = None):
-        # find which server owns this tool
         server_name = target_server or self.tool_server_map.get(tool_name)
         if not server_name:
             raise ValueError(f"工具 {tool_name} 在可用服务器中未找到")
@@ -143,18 +142,139 @@ class MCPClientManager:
         if not server_config or server_config.get("disabled", False):
             raise ValueError(f"Server {server_name} not available")
 
-        # always open a fresh session in the current task to avoid anyio cross-task issues
         session, stack = await self._open_session(server_config)
         try:
             self._validate_arguments(arguments, {})
             result = await session.call_tool(tool_name, arguments)
+            raw = result.content[0].text
+            parsed = self._parse_response(tool_name, raw)
             return {
                 "server": server_name,
                 "tool": tool_name,
-                "result": result.content[0].text,
+                "result": parsed,
             }
         finally:
             await stack.aclose()
+
+    # ── response parsing ────────────────────────────────────────────────────
+    MAX_CHARS = 3000
+
+    def _parse_response(self, tool_name: str, raw: str) -> str:
+        try:
+            import json
+            data = json.loads(raw)
+        except Exception:
+            return self._truncate(raw)
+
+        parsers = {
+            "search_repositories": self._parse_search_repos,
+            "list_issues":         self._parse_issues,
+            "search_issues":       self._parse_issues,
+            "list_commits":        self._parse_commits,
+            "search_code":         self._parse_search_code,
+            "search_users":        self._parse_search_users,
+            "get_file_contents":   self._parse_file_contents,
+            "list_pull_requests":  self._parse_pull_requests,
+        }
+
+        parser = parsers.get(tool_name)
+        if parser:
+            try:
+                return self._truncate(parser(data))
+            except Exception:
+                pass
+        return self._truncate(raw)
+
+    def _truncate(self, text: str) -> str:
+        if len(text) <= self.MAX_CHARS:
+            return text
+        return text[:self.MAX_CHARS] + f"\n... [truncated, {len(text) - self.MAX_CHARS} chars omitted]"
+
+    def _parse_search_repos(self, data: dict) -> str:
+        import json
+        items = data.get("items", data) if isinstance(data, dict) else data
+        out = []
+        for r in items[:10]:
+            out.append({
+                "name":        r.get("full_name"),
+                "description": r.get("description"),
+                "stars":       r.get("stargazers_count"),
+                "language":    r.get("language"),
+                "url":         r.get("html_url"),
+            })
+        return json.dumps(out, ensure_ascii=False, indent=2)
+
+    def _parse_issues(self, data) -> str:
+        import json
+        items = data if isinstance(data, list) else data.get("items", [])
+        out = []
+        for i in items[:15]:
+            out.append({
+                "number": i.get("number"),
+                "title":  i.get("title"),
+                "state":  i.get("state"),
+                "user":   i.get("user", {}).get("login"),
+                "url":    i.get("html_url"),
+            })
+        return json.dumps(out, ensure_ascii=False, indent=2)
+
+    def _parse_commits(self, data) -> str:
+        import json
+        items = data if isinstance(data, list) else []
+        out = []
+        for c in items[:15]:
+            out.append({
+                "sha":     c.get("sha", "")[:7],
+                "message": c.get("commit", {}).get("message", "").split("\n")[0],
+                "author":  c.get("commit", {}).get("author", {}).get("name"),
+                "date":    c.get("commit", {}).get("author", {}).get("date"),
+            })
+        return json.dumps(out, ensure_ascii=False, indent=2)
+
+    def _parse_search_code(self, data: dict) -> str:
+        import json
+        items = data.get("items", [])
+        out = []
+        for i in items[:10]:
+            out.append({
+                "name": i.get("name"),
+                "path": i.get("path"),
+                "repo": i.get("repository", {}).get("full_name"),
+                "url":  i.get("html_url"),
+            })
+        return json.dumps(out, ensure_ascii=False, indent=2)
+
+    def _parse_search_users(self, data: dict) -> str:
+        import json
+        items = data.get("items", [])
+        out = [{"login": u.get("login"), "url": u.get("html_url")} for u in items[:15]]
+        return json.dumps(out, ensure_ascii=False, indent=2)
+
+    def _parse_file_contents(self, data: dict) -> str:
+        import base64, json
+        content = data.get("content", "")
+        encoding = data.get("encoding", "")
+        if encoding == "base64":
+            try:
+                content = base64.b64decode(content.replace("\n", "")).decode("utf-8", errors="replace")
+            except Exception:
+                pass
+        meta = {"name": data.get("name"), "path": data.get("path"), "size": data.get("size")}
+        return json.dumps(meta, ensure_ascii=False) + "\n\n" + content
+
+    def _parse_pull_requests(self, data) -> str:
+        import json
+        items = data if isinstance(data, list) else []
+        out = []
+        for pr in items[:15]:
+            out.append({
+                "number": pr.get("number"),
+                "title":  pr.get("title"),
+                "state":  pr.get("state"),
+                "user":   pr.get("user", {}).get("login"),
+                "url":    pr.get("html_url"),
+            })
+        return json.dumps(out, ensure_ascii=False, indent=2)
 
     def _validate_arguments(self, arguments: dict, schema: dict):
         required_fields = schema.get("required", [])

@@ -261,7 +261,7 @@ async def run_agent(provider, ollama_model, agent_path, skill_name, mcp_choice, 
         if not query:
             continue
         print("\nAgente: ", end="", flush=True)
-        for chunk in agent.run(query, stream=True, user_id=user_id, max_retry=1):
+        for chunk in agent.run(query, stream=True, user_id=user_id, max_retry=5):
             if isinstance(chunk, str):
                 print(chunk, end="", flush=True)
         print("\n")

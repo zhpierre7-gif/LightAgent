@@ -126,7 +126,7 @@ async def chat(req: ChatRequest):
         await agent.setup_mcp(mcp_setting=mcp_settings)
 
     async def stream_response():
-        for chunk in agent.run(req.message, stream=True, user_id=req.user_id, max_retry=1):
+        for chunk in agent.run(req.message, stream=True, user_id=req.user_id, max_retry=5):
             if isinstance(chunk, str):
                 yield chunk
 
