@@ -231,7 +231,7 @@ async def run_agent(provider, ollama_model, agent_path, skill_name, mcp_choice, 
 
     all_mcps = {}
     if MCP_SETTINGS_PATH.exists():
-        all_mcps = json.loads(MCP_SETTINGS_PATH.read_text()).get("mcpServers", {})
+        all_mcps = json.loads(os.path.expandvars(MCP_SETTINGS_PATH.read_text())).get("mcpServers", {})
 
     mcp_settings = None
     if mcp_choice == "full":

@@ -64,7 +64,7 @@ def load_skill_content(skill_name: str) -> str:
 def build_mcp_settings(mcp: str) -> Optional[dict]:
     if not MCP_SETTINGS_PATH.exists() or mcp == "none":
         return None
-    all_mcps = json.loads(MCP_SETTINGS_PATH.read_text()).get("mcpServers", {})
+    all_mcps = json.loads(os.path.expandvars(MCP_SETTINGS_PATH.read_text())).get("mcpServers", {})
     if mcp == "full":
         return {"mcpServers": all_mcps}
     if mcp == "memory":

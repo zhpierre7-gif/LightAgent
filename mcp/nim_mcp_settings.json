@@ -9,8 +9,11 @@
       "disabled": false
     },
     "memory": {
-      "command": "npx",
-      "args": ["-y", "knowledgegraph-mcp"],
+      "command": "uv",
+      "args": ["run", "--directory", "${GRAPHITI_MCP_DIR}", "graphiti_mcp"],
+      "env": {
+        "GRAPHITI_CONFIG_PATH": "${GRAPHITI_CONFIG}"
+      },
       "disabled": false
     }
   }

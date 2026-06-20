@@ -1,0 +1,18 @@
+server:
+  transport: "stdio"
+
+llm:
+  provider: "openai"
+  model: "deepseek-ai/deepseek-v4-flash"
+  api_base: "https://integrate.api.nvidia.com/v1"
+  api_key: ""  # usa OPENAI_API_KEY ou NVIDIA_API_KEY do ambiente
+
+embedder:
+  provider: "sentence_transformers"
+  model: "all-MiniLM-L6-v2"
+
+database:
+  provider: "falkordb"
+  providers:
+    falkordb:
+      uri: "redis://localhost:6379"

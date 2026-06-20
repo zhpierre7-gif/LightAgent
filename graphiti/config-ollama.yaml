@@ -1,0 +1,18 @@
+server:
+  transport: "stdio"
+
+llm:
+  provider: "openai"
+  model: "qwen2.5:7b"
+  api_base: "http://localhost:11434/v1"
+  api_key: "ollama"
+
+embedder:
+  provider: "sentence_transformers"
+  model: "all-MiniLM-L6-v2"
+
+database:
+  provider: "falkordb"
+  providers:
+    falkordb:
+      uri: "redis://localhost:6379"
