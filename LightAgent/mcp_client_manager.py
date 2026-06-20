@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-作者: [weego/WXAI-Team]
-最后更新: 2026-02-20
+Author: [weego/WXAI-Team]
+Last updated: 2026-02-20
 """
 
 from functools import partial
@@ -18,7 +18,7 @@ from .tools import ToolRegistry
 
 
 class MCPClientManager:
-    """增强版MCP客户端管理器"""
+    """Enhanced MCP client manager."""
 
     def __init__(self, config: dict, tool_registry: ToolRegistry):
         self.config = config
@@ -136,7 +136,7 @@ class MCPClientManager:
     async def call_tool(self, tool_name: str, arguments: dict, target_server: str = None):
         server_name = target_server or self.tool_server_map.get(tool_name)
         if not server_name:
-            raise ValueError(f"工具 {tool_name} 在可用服务器中未找到")
+            raise ValueError(f"Tool {tool_name} was not found on any available server.")
 
         server_config = self.config["mcpServers"].get(server_name)
         if not server_config or server_config.get("disabled", False):
@@ -280,4 +280,4 @@ class MCPClientManager:
         required_fields = schema.get("required", [])
         for field in required_fields:
             if field not in arguments:
-                raise ValueError(f"缺少必要参数: {field}")
+                raise ValueError(f"Missing required parameter: {field}")

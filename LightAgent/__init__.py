@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-作者: [weego/WXAI-Team]
-最后更新: 2026-02-20
+Author: [weego/WXAI-Team]
+Last updated: 2026-02-20
 """
 
 from .version import __version__

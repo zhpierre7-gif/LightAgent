@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-作者: [weego/WXAI-Team]
-最后更新: 2026-02-20
+Author: [weego/WXAI-Team]
+Last updated: 2026-02-20
 """
 
 import logging
@@ -12,7 +12,7 @@ from typing import Any, Optional
 
 
 class LoggerManager:
-    """集中管理日志系统"""
+    """Centralized logging system manager."""
 
     def __init__(self, name: str, debug: bool, log_level: str, log_file: Optional[str] = None):
         self.name = name
@@ -33,7 +33,7 @@ class LoggerManager:
             logger.addHandler(console_handler)
 
         if log_file:
-            # 确保 log 目录存在
+            # Ensure the log directory exists
             log_dir = os.path.dirname(log_file)
             if log_dir and not os.path.exists(log_dir):
                 os.makedirs(log_dir)
@@ -45,7 +45,7 @@ class LoggerManager:
         return logger
 
     def log(self, level: str, action: str, data: Any):
-        """记录日志"""
+        """Write a log entry."""
         if not self.debug:
             return
 
@@ -61,5 +61,5 @@ class LoggerManager:
             self.logger.error(safe_msg)
 
     def set_traceid(self, traceid: str):
-        """设置当前跟踪ID"""
+        """Set the current trace ID."""
         self.traceid = traceid

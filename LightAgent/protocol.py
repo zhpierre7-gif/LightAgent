@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-作者: [weego/WXAI-Team]
-最后更新: 2026-02-20
+Author: [weego/WXAI-Team]
+Last updated: 2026-02-20
 """
 
 from dataclasses import dataclass, field
@@ -11,7 +11,7 @@ from typing import Any, Callable, Iterable, Protocol
 
 
 class MemoryProtocol(Protocol):
-    """记忆存储与检索协议"""
+    """Protocol for memory storage and retrieval."""
     def store(self, data: str, user_id: str) -> Any:
         ...
 

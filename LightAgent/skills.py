@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-作者: [weego/WXAI-Team]
-最后更新: 2026-02-22
+Author: [weego/WXAI-Team]
+Last updated: 2026-02-22
 """
 
 import os
@@ -19,7 +19,7 @@ import logging
 
 @dataclass
 class Skill:
-    """技能数据类"""
+    """Skill data class."""
     name: str
     description: str
     path: str
@@ -30,7 +30,7 @@ class Skill:
 
 
 class SkillManager:
-    """技能管理器：发现、加载和执行技能"""
+    """Skill manager: discovers, loads, and executes skills."""
 
     def __init__(self, skills_directories: List[str] = None, logger=None):
         self.skills_directories = skills_directories or ["skills"]
@@ -38,7 +38,7 @@ class SkillManager:
         self.logger = logger or logging.getLogger(__name__)
 
     def discover_skills(self) -> List[Skill]:
-        """发现所有可用技能（仅加载元数据）"""
+        """Discover all available skills (metadata only)."""
         discovered = []
 
         for base_dir in self.skills_directories:
@@ -64,24 +64,24 @@ class SkillManager:
         return discovered
 
     def _load_skill_metadata(self, skill_path: str) -> Optional[Skill]:
-        """从SKILL.md加载技能元数据（仅frontmatter）"""
+        """Load skill metadata from SKILL.md (frontmatter only)."""
         skill_file = os.path.join(skill_path, "SKILL.md")
 
         with open(skill_file, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # 解析YAML frontmatter
+        # Parse YAML frontmatter
         frontmatter_match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
         if not frontmatter_match:
             raise ValueError(f"Missing frontmatter in {skill_file}")
 
         frontmatter = yaml.safe_load(frontmatter_match.group(1))
 
-        # 验证必需字段
+        # Validate required fields
         if 'name' not in frontmatter or 'description' not in frontmatter:
             raise ValueError(f"Skill missing required fields (name, description)")
 
-        # 检查可选目录
+        # Check for optional directories
         has_scripts = os.path.exists(os.path.join(skill_path, "scripts"))
         has_references = os.path.exists(os.path.join(skill_path, "references"))
         has_assets = os.path.exists(os.path.join(skill_path, "assets"))
@@ -96,7 +96,7 @@ class SkillManager:
         )
 
     def activate_skill(self, skill_name: str) -> str:
-        """激活技能：加载完整指令到上下文"""
+        """Activate a skill: load its full instructions into context."""
         if skill_name not in self.skills:
             raise ValueError(f"Skill '{skill_name}' not found")
 
@@ -106,7 +106,7 @@ class SkillManager:
         with open(skill_file, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # 移除frontmatter，只保留指令部分
+        # Strip frontmatter and keep only the instructions body
         content = re.sub(r'^---\s*\n.*?\n---\s*\n', '', content, flags=re.DOTALL)
         skill.instructions = content.strip()
 
@@ -114,7 +114,7 @@ class SkillManager:
         return skill.instructions
 
     def get_skills_xml(self) -> str:
-        """生成技能元数据的XML格式（用于系统提示）"""
+        """Generate skill metadata in XML format (for use in system prompts)."""
         if not self.skills:
             return ""
 
@@ -131,7 +131,7 @@ class SkillManager:
         return '\n'.join(xml_parts)
 
     def execute_script(self, skill_name: str, script_name: str, args: List[str] = None) -> str:
-        """执行技能中的脚本（带沙箱）"""
+        """Execute a script from within a skill (sandboxed)."""
         if skill_name not in self.skills:
             return f"Error: Skill '{skill_name}' not found"
 
@@ -141,12 +141,12 @@ class SkillManager:
         if not os.path.exists(script_path):
             return f"Error: Script '{script_path}' not found in skill '{skill_name}'"
 
-        # 安全检查：只允许执行scripts目录下的文件
+        # Security check: only allow execution of files inside the scripts directory
         if not script_path.startswith(os.path.join(skill.path, "scripts")):
             return "Error: Security violation - cannot execute outside scripts directory"
 
         try:
-            # 在临时目录中执行以提供隔离
+            # Run in a temporary directory for isolation
             with tempfile.TemporaryDirectory() as tmpdir:
                 result = subprocess.run(
                     [script_path] + (args or []),
@@ -170,14 +170,14 @@ class SkillManager:
             return f"Error executing script: {str(e)}"
 
     def read_reference(self, skill_name: str, ref_path: str) -> str:
-        """读取技能中的参考文档"""
+        """Read a reference document from within a skill."""
         if skill_name not in self.skills:
             return f"Error: Skill '{skill_name}' not found"
 
         skill = self.skills[skill_name]
         full_path = os.path.join(skill.path, "references", ref_path)
 
-        # 安全检查：防止目录遍历
+        # Security check: prevent directory traversal
         if not full_path.startswith(os.path.join(skill.path, "references")):
             return "Error: Security violation - invalid reference path"
 
@@ -192,14 +192,14 @@ class SkillManager:
             return f"Error reading reference: {str(e)}"
 
     def read_asset(self, skill_name: str, asset_path: str) -> bytes:
-        """读取技能中的资源文件（返回二进制数据）"""
+        """Read an asset file from within a skill (returns raw bytes)."""
         if skill_name not in self.skills:
             raise ValueError(f"Skill '{skill_name}' not found")
 
         skill = self.skills[skill_name]
         full_path = os.path.join(skill.path, "assets", asset_path)
 
-        # 安全检查
+        # Security check
         if not full_path.startswith(os.path.join(skill.path, "assets")):
             raise ValueError("Security violation: invalid asset path")
 
@@ -207,7 +207,7 @@ class SkillManager:
             return f.read()
 
     def _log(self, level: str, action: str, data: Any):
-        """统一的日志方法，兼容LightAgent的LoggerManager和标准logging"""
+        """Unified logging method, compatible with LightAgent's LoggerManager and standard logging."""
         if not self.logger:
             return
 
@@ -224,4 +224,4 @@ class SkillManager:
                 "ERROR": logging.ERROR,
             }
             self.logger.log(level_map.get(level, logging.INFO), log_msg)
-        # 如果没有合适的logger，忽略日志
+        # If no suitable logger is available, silently skip logging

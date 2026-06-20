@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-作者: [weego/WXAI-Team]
-最后更新: 2026-02-20
+Author: [weego/WXAI-Team]
+Last updated: 2026-02-20
 """
 
 import json
@@ -20,26 +20,26 @@ from .errors import format_error_code, format_lightagent_error
 
 
 class ToolRegistry:
-    """集中管理工具注册表，避免全局变量"""
+    """Centralized tool registry, avoids the need for global variables."""
 
     def __init__(self):
-        self.function_mappings = {}  # 工具名称 -> 工具函数
-        self.function_info = {}  # 工具名称 -> 工具info信息
-        self.openai_function_schemas = []  # OpenAI 格式的工具描述
+        self.function_mappings = {}  # tool name -> tool function
+        self.function_info = {}  # tool name -> tool info dict
+        self.openai_function_schemas = []  # tool descriptions in OpenAI format
 
     def register_tool(self, func: Callable) -> bool:
-        """注册单个工具"""
+        """Register a single tool."""
         if not hasattr(func, "tool_info"):
             return False
 
         tool_info = func.tool_info
         tool_name = tool_info["tool_name"]
 
-        # 注册到字典
+        # Register into the dictionaries
         self.function_info[tool_name] = tool_info
         self.function_mappings[tool_name] = func
 
-        # 构建 OpenAI 格式的工具描述
+        # Build the tool description in OpenAI format
         tool_params_openai = {}
         tool_required = []
         for param in tool_info["tool_params"]:
@@ -69,7 +69,7 @@ class ToolRegistry:
         return True
 
     def register_tools(self, tools: List[Callable]) -> bool:
-        """批量注册工具"""
+        """Register multiple tools at once."""
         success = True
         for func in tools:
             if not self.register_tool(func):
@@ -77,17 +77,17 @@ class ToolRegistry:
         return success
 
     def get_tools(self) -> List[Dict[str, Any]]:
-        """获取所有工具的描述（OpenAI 格式）"""
+        """Get descriptions for all registered tools (OpenAI format)."""
         return deepcopy(self.openai_function_schemas)
 
     def get_tools_str(self) -> str:
-        """将工具描述转换为格式化的 JSON 字符串"""
+        """Return tool descriptions as a formatted JSON string."""
         return json.dumps(self.openai_function_schemas, indent=4, ensure_ascii=False)
 
     def filter_tools(self, tool_reflection_result: str) -> List[Dict]:
-        """根据内容过滤工具"""
+        """Filter the tool list based on content."""
         try:
-            # 安全解析可能包含 Markdown 代码块的 JSON
+            # Safely parse JSON that may be wrapped in a Markdown code block
             refined_content = tool_reflection_result.strip()
             if refined_content.startswith('```json') and refined_content.endswith('```'):
                 refined_content = refined_content[7:-3].strip()
@@ -101,18 +101,18 @@ class ToolRegistry:
                    schema.get("function", {}).get("name", "").strip().lower() in valid_tools
             ]
         except (json.JSONDecodeError, KeyError, AttributeError) as e:
-            raise ValueError(f"工具过滤失败: {str(e)}") from e
+            raise ValueError(f"Tool filtering failed: {str(e)}") from e
 
 
 class ToolLoader:
-    """工具加载器，支持动态加载和缓存"""
+    """Tool loader with support for dynamic loading and caching."""
 
     def __init__(self, tools_directory: str = "tools"):
         self.tools_directory = tools_directory
         self.loaded_tools = {}
 
     def load_tool(self, tool_name: str) -> Callable:
-        """加载单个工具"""
+        """Load a single tool."""
         if not self._is_safe_tool_name(tool_name):
             raise ValueError(f"Invalid tool name: {tool_name}")
 
@@ -126,12 +126,12 @@ class ToolLoader:
         if not os.path.exists(tool_path):
             raise FileNotFoundError(f"Tool '{tool_name}' not found in {tool_path}")
 
-        # 动态加载模块
+        # Dynamically load the module
         spec = importlib.util.spec_from_file_location(tool_name, tool_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        # 获取工具函数
+        # Retrieve the tool function
         if hasattr(module, tool_name):
             tool_func = getattr(module, tool_name)
             if callable(tool_func) and hasattr(tool_func, "tool_info"):
@@ -145,7 +145,7 @@ class ToolLoader:
         return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", str(tool_name)))
 
     def load_tools(self, tool_names: List[str]) -> Dict[str, Callable]:
-        """批量加载工具"""
+        """Load multiple tools at once."""
         for tool_name in tool_names:
             if tool_name not in self.loaded_tools:
                 self.load_tool(tool_name)
@@ -153,7 +153,7 @@ class ToolLoader:
 
 
 class AsyncToolDispatcher:
-    """异步工具调度器"""
+    """Asynchronous tool dispatcher."""
 
     def __init__(self, function_mappings: Dict[str, Callable] = None, function_info: Dict[str, Dict[str, Any]] = None):
         self.function_mappings = function_mappings or {}
@@ -161,7 +161,7 @@ class AsyncToolDispatcher:
 
     async def dispatch(self, tool_name: str, tool_params: Dict[str, Any]) -> Union[
         str, Generator[str, None, None], AsyncGenerator[str, None]]:
-        """调用工具执行，支持同步/异步工具及流式输出"""
+        """Invoke a tool, supporting sync/async functions and streaming output."""
         if tool_name not in self.function_mappings:
             return format_error_code("LA-TOOL", f"Tool `{tool_name}` not found.")
 
@@ -170,38 +170,38 @@ class AsyncToolDispatcher:
         if validation_error:
             return validation_error
         try:
-            # 处理不同类型的工具
+            # Handle different tool types
             if inspect.iscoroutinefunction(tool_call):
-                # 异步函数 - 直接 await 获取结果
+                # Async function — await the result directly
                 result = await tool_call(**tool_params)
             # elif inspect.isasyncgenfunction(tool_call):
-                # 异步生成器 - 需要收集所有结果
+                # Async generator — collect all chunks
                 # result = []
                 # async for chunk in tool_call(**tool_params):
                 #     result.append(chunk)
-                # # 如果只有一个结果，直接返回；否则返回列表
+                # # Return directly if there's only one result, otherwise return a list
                 # if len(result) == 1:
                 #     result = result[0]
             elif inspect.isasyncgenfunction(tool_call):
-                # 返回异步生成器对象，不做消费
+                # Return the async generator object without consuming it
                 return tool_call(**tool_params)
             elif inspect.isgeneratorfunction(tool_call):
-                # 同步生成器 - 收集所有结果
+                # Sync generator — collect all results
                 return tool_call(**tool_params)
                 # result = list(tool_call(**tool_params))
                 # if len(result) == 1:
                 #     result = result[0]
             else:
-                # 普通函数 - 直接调用
+                # Regular function — call directly
                 result = tool_call(**tool_params)
 
-            # 将结果转换为字符串（OpenAI 要求 tool content 必须是字符串）
+            # Convert result to string (OpenAI requires tool content to be a string)
             return self._serialize_result(result)
         except Exception as e:
             return f"{format_lightagent_error(e, 'execute tool', default_code='LA-TOOL')}\n{traceback.format_exc()}"
 
     def _serialize_result(self, result: Any) -> str:
-        """将任意类型的结果序列化为字符串"""
+        """Serialize any result type to a string."""
         if result is None:
             return "Tool executed successfully (no output)"
         elif isinstance(result, (dict, list)):
