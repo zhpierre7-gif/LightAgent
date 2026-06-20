@@ -11,6 +11,17 @@ from questionary import Style
 load_dotenv()
 from LightAgent import LightAgent
 
+_SKILL_BUILTINS = {"list_skills", "activate_skill", "execute_skill_script", "read_skill_reference"}
+
+def strip_skill_tools(agent):
+    agent.tool_registry.openai_function_schemas = [
+        t for t in agent.tool_registry.openai_function_schemas
+        if t.get("function", {}).get("name") not in _SKILL_BUILTINS
+    ]
+    for name in _SKILL_BUILTINS:
+        agent.tool_registry.function_mappings.pop(name, None)
+        agent.tool_registry.function_info.pop(name, None)
+
 # ── config ─────────────────────────────────────────────────────────────────
 NIM_API_KEY   = os.getenv("NVIDIA_API_KEY", "")
 NIM_BASE_URL  = "https://integrate.api.nvidia.com/v1"
@@ -229,6 +240,7 @@ async def run_agent(provider, ollama_model, agent_path, skill_name, mcp_choice, 
         base_url=base_url,
         debug=False,
     )
+    strip_skill_tools(agent)
 
     if mcp_settings:
         await agent.setup_mcp(mcp_setting=mcp_settings)
