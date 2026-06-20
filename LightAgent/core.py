@@ -457,18 +457,18 @@ class LightAgent:
         current_date = now.strftime("%Y-%m-%d")
         current_time = now.strftime("%H:%M:%S")
         system_prompt = (
-            f"##代理名称：{self.name}\n"
-            f"##代理指令：{self.instructions}\n"
-            f"##身份：{self.role}\n"
-            f"请一步一步思考来完成用户的要求。尽可能完成用户的回答，如果有补充信息，请参考补充信息来调用工具，直到获取所有满足用户的提问所需的答案。\n"
-            f"今日的日期: {current_date} 当前时间: {current_time}"
+            f"## Agent name: {self.name}\n"
+            f"## Instructions: {self.instructions}\n"
+            f"## Identity: {self.role}\n"
+            f"Think step by step to fulfill the user request. Answer as completely as possible, using tools when needed.\n"
+            f"Today: {current_date} | Time: {current_time}"
         )
-        # 添加技能元数据到系统提示
+        # inject active skill content directly (no skill list in prompt)
         if use_skills and self.skill_manager.skills:
             skills_xml = self.skill_manager.get_skills_xml()
             if skills_xml:
-                system_prompt += f"\n\n## 可用技能\n{skills_xml}\n"
-                system_prompt += "当用户需求与某个技能描述匹配时，请先使用 activate_skill 工具加载完整指令。"
+                system_prompt += f"\n\n## Available skills\n{skills_xml}\n"
+                system_prompt += "When the user request matches a skill, call activate_skill(skill_name=...) before responding."
         # 添加记忆上下文
         query = self._add_memory_context(query, user_id)
 
