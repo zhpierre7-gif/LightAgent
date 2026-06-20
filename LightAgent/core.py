@@ -13,6 +13,7 @@ import json
 import os
 import random
 import re
+import time
 import traceback
 from copy import deepcopy
 from datetime import datetime
@@ -522,7 +523,15 @@ class LightAgent:
         self.log("DEBUG", "first_request_params", {"params": self.chat_params})
         self._record_trace("model_request", self._build_model_request_trace(self.chat_params))
         try:
-            response = self.client.chat.completions.create(**self.chat_params)
+            for _attempt in range(4):
+                try:
+                    response = self.client.chat.completions.create(**self.chat_params)
+                    break
+                except Exception as _e:
+                    if "429" in str(_e) and _attempt < 3:
+                        time.sleep(2 ** _attempt)
+                        continue
+                    raise
         except Exception as e:
             error_msg = format_lightagent_error(e, "create chat completion")
             self.log("ERROR", "model_request_failed", {"error": error_msg})
@@ -952,7 +961,15 @@ class LightAgent:
             self._record_trace("model_request", self._build_model_request_trace(self.chat_params))
 
             try:
-                response = self.client.chat.completions.create(**self.chat_params)
+                for _attempt in range(4):
+                    try:
+                        response = self.client.chat.completions.create(**self.chat_params)
+                        break
+                    except Exception as _e:
+                        if "429" in str(_e) and _attempt < 3:
+                            time.sleep(2 ** _attempt)
+                            continue
+                        raise
             except Exception as e:
                 error_msg = format_lightagent_error(e, "continue chat completion")
                 self.log("ERROR", "model_request_failed", {"error": error_msg})
@@ -1243,7 +1260,15 @@ class LightAgent:
                             self.log("DEBUG", "stream next_request_params", {"params": self.chat_params})
                             self._record_trace("model_request", self._build_model_request_trace(self.chat_params))
                             try:
-                                response = self.client.chat.completions.create(**self.chat_params)
+                                for _attempt in range(4):
+                                    try:
+                                        response = self.client.chat.completions.create(**self.chat_params)
+                                        break
+                                    except Exception as _e:
+                                        if "429" in str(_e) and _attempt < 3:
+                                            time.sleep(2 ** _attempt)
+                                            continue
+                                        raise
                             except Exception as e:
                                 error_msg = format_lightagent_error(e, "continue streaming chat completion")
                                 self.log("ERROR", "model_request_failed", {"error": error_msg})
