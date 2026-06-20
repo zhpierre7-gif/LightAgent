@@ -221,6 +221,14 @@ async def run_agent(provider, ollama_model, agent_path, skill_name, mcp_choice, 
     if skill_content:
         system_prompt += f"\n\n## Active Skill: {skill_name}\n{skill_content}"
 
+    if mcp_choice in ("full", "memory"):
+        system_prompt += (
+            "\n\n## Memory Tool Instructions"
+            "\nWhen storing information use create_entities with the observations array populated with the actual facts."
+            "\nNever leave observations empty — put every fact, description, or detail as a string in that array."
+            "\nAfter create_entities, if observations were missing, call add_observations immediately with the facts."
+        )
+
     all_mcps = {}
     if MCP_SETTINGS_PATH.exists():
         all_mcps = json.loads(MCP_SETTINGS_PATH.read_text()).get("mcpServers", {})

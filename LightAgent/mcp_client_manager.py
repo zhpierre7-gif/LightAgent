@@ -142,6 +142,8 @@ class MCPClientManager:
         if not server_config or server_config.get("disabled", False):
             raise ValueError(f"Server {server_name} not available")
 
+        arguments = self._coerce_arguments(tool_name, arguments)
+
         session, stack = await self._open_session(server_config)
         try:
             self._validate_arguments(arguments, {})
@@ -155,6 +157,105 @@ class MCPClientManager:
             }
         finally:
             await stack.aclose()
+
+    # ── argument coercion ───────────────────────────────────────────────────
+
+    def _coerce_arguments(self, tool_name: str, arguments: dict) -> dict:
+        coercers = {
+            "create_entities":  self._coerce_create_entities,
+            "create_relations": self._coerce_create_relations,
+            "add_observations": self._coerce_add_observations,
+        }
+        coercer = coercers.get(tool_name)
+        if coercer:
+            try:
+                return coercer(arguments)
+            except Exception:
+                pass
+        return arguments
+
+    def _score_entity(self, e: dict) -> float:
+        score = 1.0
+        name = str(e.get("name", ""))
+        if len(name.split()) > 4:
+            score -= 0.4
+        elif len(name.split()) > 2:
+            score -= 0.1
+        if not (e.get("observations") or []):
+            score -= 0.4
+        if not e.get("entityType"):
+            score -= 0.1
+        return max(0.0, score)
+
+    _VERB_TOKENS = {"is","are","was","were","has","have","uses","used","can","does","do","had","will","be"}
+
+    def _extract_noun(self, sentence: str) -> str:
+        words = sentence.split()
+        for i, w in enumerate(words):
+            if w.lower().rstrip(".,") in self._VERB_TOKENS:
+                return " ".join(words[:i]).strip(".,") or words[0]
+        return words[0] if words else sentence
+
+    def _coerce_create_entities(self, args: dict) -> dict:
+        entities = args.get("entities", [])
+        if isinstance(entities, dict):
+            entities = [entities]
+        fixed = []
+        for e in entities:
+            if isinstance(e, str):
+                e = {"name": e}
+
+            score = self._score_entity(e)
+
+            name_raw = str(e.get("name") or e.get("entity") or e.get("id") or "unknown")
+            entity_type = str(e.get("entityType") or e.get("type") or e.get("entity_type") or "concept")
+            obs = e.get("observations") or e.get("observation") or e.get("facts") or e.get("description") or []
+            if isinstance(obs, str):
+                obs = [obs]
+            obs = list(obs)
+
+            if score < 0.5 and len(name_raw.split()) > 3:
+                # heavy coercion: name is a sentence — extract noun, demote sentence to obs
+                name = self._extract_noun(name_raw)
+                if name_raw not in obs:
+                    obs.insert(0, name_raw)
+            else:
+                name = name_raw
+
+            fixed.append({"name": name, "entityType": entity_type, "observations": obs})
+        return {"entities": fixed}
+
+    def _coerce_create_relations(self, args: dict) -> dict:
+        relations = args.get("relations", [])
+        if isinstance(relations, dict):
+            relations = [relations]
+        fixed = []
+        for r in relations:
+            if isinstance(r, str):
+                continue
+            fixed.append({
+                "from":           str(r.get("from") or r.get("source") or r.get("from_entity") or ""),
+                "to":             str(r.get("to") or r.get("target") or r.get("to_entity") or ""),
+                "relationType":   str(r.get("relationType") or r.get("relation") or r.get("type") or "related_to"),
+            })
+        return {"relations": fixed}
+
+    def _coerce_add_observations(self, args: dict) -> dict:
+        observations = args.get("observations", [])
+        if isinstance(observations, dict):
+            observations = [observations]
+        fixed = []
+        for o in observations:
+            if isinstance(o, str):
+                continue
+            contents = o.get("contents") or o.get("observations") or o.get("content") or []
+            if isinstance(contents, str):
+                contents = [contents]
+            fixed.append({
+                "entityName":  str(o.get("entityName") or o.get("entity") or o.get("name") or ""),
+                "contents":    list(contents),
+            })
+        return {"observations": fixed}
 
     # ── response parsing ────────────────────────────────────────────────────
     MAX_CHARS = 3000
@@ -175,6 +276,7 @@ class MCPClientManager:
             "search_users":        self._parse_search_users,
             "get_file_contents":   self._parse_file_contents,
             "list_pull_requests":  self._parse_pull_requests,
+            "create_entities":     self._parse_create_entities,
         }
 
         parser = parsers.get(tool_name)
@@ -184,6 +286,23 @@ class MCPClientManager:
             except Exception:
                 pass
         return self._truncate(raw)
+
+    def _parse_create_entities(self, data) -> str:
+        import json
+        entities = data if isinstance(data, list) else [data]
+        hints = []
+        for e in entities:
+            name = e.get("name", "?")
+            obs = e.get("observations", [])
+            if not obs:
+                hints.append(
+                    f"Entity '{name}' created with no observations. "
+                    f"Call add_observations with entityName='{name}' and the specific facts you know about them."
+                )
+        base = json.dumps(data, ensure_ascii=False, indent=2)
+        if hints:
+            return base + "\n\nNOTE: " + " ".join(hints)
+        return base
 
     def _truncate(self, text: str) -> str:
         if len(text) <= self.MAX_CHARS:

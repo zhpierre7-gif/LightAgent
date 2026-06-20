@@ -110,6 +110,14 @@ async def chat(req: ChatRequest):
     if skill_content:
         system_prompt += f"\n\n## Active Skill: {req.skill}\n{skill_content}"
 
+    if req.mcp in ("full", "memory"):
+        system_prompt += (
+            "\n\n## Memory Tool Instructions"
+            "\nWhen storing information use create_entities with the observations array populated with the actual facts."
+            "\nNever leave observations empty — put every fact, description, or detail as a string in that array."
+            "\nAfter create_entities, if observations were missing, call add_observations immediately with the facts."
+        )
+
     # mcp
     mcp_settings = build_mcp_settings(req.mcp or "none")
 
